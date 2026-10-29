@@ -44,6 +44,7 @@
     nowFeels: document.getElementById('nowFeels'),
     nowHumidity: document.getElementById('nowHumidity'),
     nowWind: document.getElementById('nowWind'),
+    nowWindArrow: document.getElementById('nowWindArrow'),
     nowObs: document.getElementById('nowObs'),
     // 24 小时
     hourlyCard: document.getElementById('hourlyCard'),
@@ -283,6 +284,24 @@
 
   /* ================= 6. 渲染 ================= */
 
+  /**
+   * 风向文字 -> 箭头旋转角度（0° 朝上=北，顺时针）
+   * 箭头指向「风吹去的方向」：北风 => 向南 => 180°
+   * 返回 null 表示无法识别（如「无持续风向」），此时隐藏箭头
+   */
+  function windDirToDegree(dir) {
+    const s = String(dir || '');
+    // 两字方位必须先判断，避免「东北风」被「东风」抢先匹配
+    const table = [
+      ['东北', 225], ['东南', 315], ['西北', 135], ['西南', 45],
+      ['北', 180], ['东', 270], ['南', 0], ['西', 90],
+    ];
+    for (let i = 0; i < table.length; i++) {
+      if (s.indexOf(table[i][0]) !== -1) return table[i][1];
+    }
+    return null;
+  }
+
   function renderNow(now, label) {
     dom.nowCity.textContent = label;
     dom.nowTemp.textContent = now.temp != null ? now.temp : '--';
@@ -292,6 +311,17 @@
     dom.nowHumidity.textContent = now.humidity != null ? now.humidity + '%' : '--';
     dom.nowWind.textContent =
       now.windDir && now.windScale ? now.windDir + ' ' + now.windScale + ' 级' : '--';
+    // 🆕 风向箭头：随风向旋转
+    if (dom.nowWindArrow) {
+      const deg = windDirToDegree(now.windDir);
+      if (deg === null) {
+        dom.nowWindArrow.hidden = true;
+      } else {
+        dom.nowWindArrow.hidden = false;
+        dom.nowWindArrow.style.transform = 'rotate(' + deg + 'deg)';
+        dom.nowWindArrow.title = '风向：' + (now.windDir || '');
+      }
+    }
     dom.nowObs.textContent = formatHourMinute(now.obsTime);
     dom.nowCard.hidden = false;
   }

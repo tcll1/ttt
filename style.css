@@ -1025,3 +1025,28 @@ body[data-theme="dark"] .chart-wrap {
 @media (max-width: 560px) {
   .chart-wrap { height: 130px; }
 }
+
+/* ============================================================
+   🆕 14. 风向箭头（实时卡片内，随风向旋转）
+   ============================================================ */
+.now-metrics .wind-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.wind-arrow {
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.9;
+  transform-origin: 50% 50%;
+  transition: transform 0.5s ease;
+}
+
+.wind-arrow[hidden] {
+  display: none !important;
+}
