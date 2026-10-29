@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>城市天气 · 和风天气 v7</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <!-- 顶部标题 -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1>城市天气</h1>
+        <p class="subtitle">数据来源：和风天气 Weather API v7</p>
+      </div>
+      <!-- 🆕 昼夜模式切换按钮 -->
+      <button type="button" id="themeToggle" class="theme-toggle" aria-label="切换昼夜模式" title="切换昼夜模式">🌙</button>
+    </header>
+
+    <!-- 搜索 / 定位 -->
+    <form class="search-bar" id="searchForm" autocomplete="off">
+      <input id="cityInput" type="text" placeholder="输入城市名，例如：郴州、北京" aria-label="城市名称" />
+      <button type="submit" id="searchBtn">查询</button>
+      <button type="button" id="locateBtn">定位</button>
+    </form>
+
+    <!-- 全局提示条：加载中 / 错误（401、403、429、断网等）中文提示 -->
+    <div id="statusBar" class="status" role="status" aria-live="polite" hidden></div>
+
+    <!-- 实时天气 -->
+    <section class="card now-card" id="nowCard" hidden>
+      <div class="now-main">
+        <div class="now-left">
+          <div class="city" id="nowCity">--</div>
+          <div class="now-temp">
+            <span id="nowTemp">--</span><span class="unit">°C</span>
+          </div>
+          <div class="now-text" id="nowText">--</div>
+        </div>
+        <div class="now-icon" id="nowIcon" aria-hidden="true"></div>
+      </div>
+
+      <ul class="now-metrics">
+        <li>
+          <span class="label">体感温度</span>
+          <span class="value" id="nowFeels">--</span>
+        </li>
+        <li>
+          <span class="label">相对湿度</span>
+          <span class="value" id="nowHumidity">--</span>
+        </li>
+        <li>
+          <span class="label">风力风向</span>
+          <span class="value" id="nowWind">--</span>
+        </li>
+        <li>
+          <span class="label">观测时间</span>
+          <span class="value" id="nowObs">--</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 🆕 日出日落卡片 -->
+    <section class="card sun-card" id="sunCard" hidden>
+      <h2 class="card-title">日出日落</h2>
+      <div class="sun-grid">
+        <div class="sun-item">
+          <span class="sun-icon">🌅</span>
+          <span class="sun-label">日出</span>
+          <span class="sun-time" id="sunriseTime">--</span>
+        </div>
+        <div class="sun-item">
+          <span class="sun-icon">🌇</span>
+          <span class="sun-label">日落</span>
+          <span class="sun-time" id="sunsetTime">--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 24 小时预报（横向滚动 + 折线图） -->
+    <section class="card" id="hourlyCard" hidden>
+      <h2 class="card-title">24 小时预报</h2>
+      <!-- 🆕 温度折线图 -->
+      <div class="chart-wrap" id="hourlyChartWrap"><canvas id="hourlyChart"></canvas></div>
+      <div class="hourly-scroll" id="hourlyList"></div>
+      <p class="card-tip" id="hourlyTip" hidden></p>
+    </section>
+
+    <!-- 未来 7 天 -->
+    <section class="card" id="dailyCard" hidden>
+      <h2 class="card-title">未来 7 天</h2>
+      <ul class="daily-list" id="dailyList"></ul>
+      <p class="card-tip" id="dailyTip" hidden></p>
+    </section>
+
+    <!-- 🆕 全国天气缩略图（右下角悬浮，点击放大） -->
+    <div class="map-thumb" id="mapThumb" aria-label="打开全国天气地图">
+      <svg viewBox="0 0 600 500" xmlns="http://www.w3.org/2000/svg">
+        <path d="M80,180 Q90,130 140,120 Q200,100 260,95 Q320,90 380,100 Q440,110 490,140 Q530,170 540,210 Q550,250 540,290 Q530,330 500,360 Q470,390 420,400 Q370,410 320,405 Q270,400 220,390 Q170,380 130,350 Q100,320 85,270 Q75,220 80,180 Z" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.6)" stroke-width="2"/>
+        <g id="thumbPoints"></g>
+      </svg>
+      <div class="map-thumb-label">🗺️ 全国天气</div>
+    </div>
+
+    <!-- 🆕 全国天气弹窗（点击缩略图弹出） -->
+    <div class="map-modal" id="mapModal" hidden>
+      <div class="map-modal-content">
+        <div class="map-modal-header">
+          <h3>全国天气概览</h3>
+          <button type="button" class="map-modal-close" id="mapModalClose" aria-label="关闭">✕</button>
+        </div>
+        <div class="map-modal-body">
+          <svg class="china-map" viewBox="0 0 600 500" xmlns="http://www.w3.org/2000/svg">
+            <path class="map-outline" d="M80,180 Q90,130 140,120 Q200,100 260,95 Q320,90 380,100 Q440,110 490,140 Q530,170 540,210 Q550,250 540,290 Q530,330 500,360 Q470,390 420,400 Q370,410 320,405 Q270,400 220,390 Q170,380 130,350 Q100,320 85,270 Q75,220 80,180 Z" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+            <g id="mapPoints"></g>
+          </svg>
+          <div class="map-city-grid" id="mapCityGrid">
+            <!-- 城市卡片列表 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🆕 穿衣与运动建议卡片 -->
+    <section class="card advice-card" id="adviceCard" hidden>
+      <h2 class="card-title">👔 穿衣 & 运动建议</h2>
+      <div class="advice-grid">
+        <div class="advice-item advice-cloth">
+          <div class="advice-icon">🧥</div>
+          <div class="advice-content">
+            <div class="advice-label">穿衣建议</div>
+            <div class="advice-text" id="adviceCloth">--</div>
+          </div>
+        </div>
+        <div class="advice-item advice-sport">
+          <div class="advice-icon">🏃</div>
+          <div class="advice-content">
+            <div class="advice-label">运动建议</div>
+            <div class="advice-text" id="adviceSport">--</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 初始引导 / 空状态 -->
+    <p class="empty-tip" id="emptyTip">输入城市名开始查询，或点击「定位」使用当前位置</p>
+
+    <!-- 🆕 自动刷新状态条（悬浮底部） -->
+    <div class="refresh-bar" id="refreshBar" hidden>
+      <span id="refreshText">每 5 分钟自动刷新</span>
+      <span class="refresh-countdown" id="refreshCountdown"></span>
+      <button type="button" id="refreshNowBtn" class="refresh-now" title="立即刷新">🔄</button>
+    </div>
+  </main>
+
+  <!-- 🆕 下雨提醒弹窗 -->
+  <div class="rain-modal" id="rainModal" hidden>
+    <div class="rain-modal-content">
+      <div class="rain-emoji">🌧️</div>
+      <h3>下雨啦！</h3>
+      <p id="rainModalText">当前城市正在下雨，请记得带伞 🌂</p>
+      <button type="button" id="rainModalClose">知道了</button>
+    </div>
+  </div>
+
+  <!-- 🆕 雨滴特效容器（雨天自动显示） -->
+  <div class="rain-container" id="rainContainer" aria-hidden="true"></div>
+
+  <!-- 接口配置（同目录） -->
+  <script src="config.js?v=3"></script>
+  <script src="script.js?v=4"></script>
+</body>
+</html>
